@@ -1,0 +1,5 @@
+.env
+api/go.sum
+node_modules/
+dist/
+*.log

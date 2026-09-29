@@ -1,0 +1,69 @@
+services:
+  db:
+    image: mysql:8.0.40
+    command: ["--ngram-token-size=2"]
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?required}
+      MYSQL_DATABASE: ${DB_NAME:?required}
+      MYSQL_USER: ${DB_USER:?required}
+      MYSQL_PASSWORD: ${DB_PASSWORD:?required}
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -uroot -p\"$$MYSQL_ROOT_PASSWORD\" --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+  api:
+    build: ./api
+    environment:
+      DB_HOST: db
+      DB_NAME: ${DB_NAME:?required}
+      DB_USER: ${DB_USER:?required}
+      DB_PASSWORD: ${DB_PASSWORD:?required}
+      SESSION_SECRET: ${SESSION_SECRET:?required}
+      UPLOAD_DIR: /uploads
+      QDRANT_URL: http://qdrant:6333
+      EMBEDDING_DIM: ${EMBEDDING_DIM:-64}
+      GATEWAY_BASE_URL: ${GATEWAY_BASE_URL:-http://gateway:8090/v1}
+      GATEWAY_API_KEY: ${GATEWAY_API_KEY:-demo-only}
+      EMBEDDING_MODEL: ${EMBEDDING_MODEL:-demo-embedding}
+      CHAT_MODEL: ${CHAT_MODEL:-demo-chat}
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+      SEED_TEACHER_A_PASSWORD: ${SEED_TEACHER_A_PASSWORD:?required}
+      SEED_STUDENT_A_PASSWORD: ${SEED_STUDENT_A_PASSWORD:?required}
+      SEED_TEACHER_B_PASSWORD: ${SEED_TEACHER_B_PASSWORD:?required}
+      SEED_STUDENT_B_PASSWORD: ${SEED_STUDENT_B_PASSWORD:?required}
+    depends_on:
+      db:
+        condition: service_healthy
+      qdrant:
+        condition: service_started
+      gateway:
+        condition: service_started
+    volumes:
+      - uploads:/uploads
+    restart: unless-stopped
+  qdrant:
+    image: qdrant/qdrant:v1.12.6
+    volumes:
+      - qdrant_data:/qdrant/storage
+    restart: unless-stopped
+  gateway:
+    build: ./api
+    environment:
+      EMBEDDING_DIM: ${EMBEDDING_DIM:-64}
+    entrypoint: ["/campusclaw", "mock-gateway"]
+    restart: unless-stopped
+  web:
+    build: ./web
+    ports:
+      - "${WEB_PORT:-8080}:80"
+    depends_on:
+      - api
+    restart: unless-stopped
+volumes:
+  mysql_data:
+  uploads:
+  qdrant_data:
