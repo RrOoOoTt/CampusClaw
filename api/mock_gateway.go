@@ -9,6 +9,8 @@ import (
     "os"
     "strconv"
     "strings"
+    "fmt"
+    "time"
 )
 
 // Development-only deterministic OpenAI-compatible fixture, not a language model.
@@ -17,6 +19,10 @@ func runMockGateway() {
     if v, err := strconv.Atoi(os.Getenv("EMBEDDING_DIM")); err == nil && v > 0 && v <= 4096 {
         dim = v
     }
+    log.Fatal(http.ListenAndServe(":8090", mockGatewayHandler(dim)))
+}
+
+func mockGatewayHandler(dim int) http.Handler {
     mux := http.NewServeMux()
     mux.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) {
         w.Write([]byte("ok"))
@@ -47,9 +53,10 @@ func runMockGateway() {
     })
     mux.HandleFunc("POST /v1/chat/completions", func(w http.ResponseWriter, r *http.Request) {
         var in struct {
-            Messages []struct { Content string `json:"content"` } `json:"messages"`
+            Messages []modelMessage `json:"messages"`
+            Stream bool `json:"stream"`
         }
-        if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 32<<10)).Decode(&in); err != nil || len(in.Messages) == 0 {
+        if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 512<<10)).Decode(&in); err != nil || len(in.Messages) == 0 {
             http.Error(w, "bad input", http.StatusBadRequest)
             return
         }
@@ -62,12 +69,46 @@ func runMockGateway() {
             if len(characters) > 100 { characters = characters[:100] }
             if len(characters) > 0 { answer = string(characters) }
         }
+        responseText := "演示摘录：" + answer + " [1]"
+        if in.Stream {
+            role := defaultAssistantPrompt
+            system := ""
+            if len(in.Messages)>0 {system=in.Messages[0].Content}
+            if begin:=strings.Index(system,"教师角色设定：\n");begin>=0 {
+                part:=system[begin+len("教师角色设定：\n"):]
+                if stop:=strings.Index(part,"\n角色设定结束");stop>=0 {role=limitCharacters(part[:stop],80)}
+            }
+            location := "本班材料 [1]"
+            if begin:=strings.Index(prompt,"[1] 材料：");begin>=0 {
+                part:=prompt[begin:]
+                if stop:=strings.Index(part,"；正文：");stop>=0 {location=part[:stop]}
+            }
+            if strings.Contains(system,"【解题引导技能：开启】") {
+                responseText="演示助手 · 角色设定："+role+"\n\n解题引导已开启。先列出题目的已知条件，再对照 "+location+" 中的方法选择解题步骤。你可以先写出第一步推导，我会继续给提示；这一轮不直接给出最终答案。"
+            } else {
+                responseText="演示助手 · 角色设定："+role+"\n\n解题引导已关闭，直接回答。依据 "+location+"，相关内容为："+answer+"。"
+            }
+            w.Header().Set("Content-Type","text/event-stream; charset=utf-8")
+            w.Header().Set("X-Accel-Buffering","no")
+            characters:=[]rune(responseText)
+            for start:=0;start<len(characters);start+=10 {
+                end:=start+10;if end>len(characters){end=len(characters)}
+                payload:=map[string]any{"choices":[]any{map[string]any{"delta":map[string]string{"content":string(characters[start:end])}}}}
+                data,_:=json.Marshal(payload)
+                if _,err:=fmt.Fprintf(w,"data: %s\n\n",data);err!=nil{return}
+                if http.NewResponseController(w).Flush()!=nil{return}
+                select {case <-r.Context().Done():return;case <-time.After(30*time.Millisecond):}
+            }
+            fmt.Fprint(w,"data: [DONE]\n\n")
+            http.NewResponseController(w).Flush()
+            return
+        }
         w.Header().Set("Content-Type", "application/json")
         json.NewEncoder(w).Encode(map[string]any{
             "choices": []any{map[string]any{
-                "message": map[string]string{"content": "演示摘录：" + answer + " [1]"},
+                "message": map[string]string{"content": responseText},
             }},
         })
     })
-    log.Fatal(http.ListenAndServe(":8090", mux))
+    return mux
 }

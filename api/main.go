@@ -53,12 +53,16 @@ func main() {
  sqlText,_:=schema.ReadFile("schema.sql");if _,err=db.Exec(string(sqlText));err!=nil {log.Fatal(err)}
  if err=os.MkdirAll(uploadDir,0700);err!=nil {log.Fatal(err)}
  seed()
+ initAssistant()
  initRetrieval()
+ go runMaterialCleanup()
  mux:=http.NewServeMux()
  mux.HandleFunc("GET /health",func(w http.ResponseWriter,r *http.Request){w.Write([]byte("ok"))})
  mux.HandleFunc("POST /api/login",login)
  mux.HandleFunc("POST /api/logout",auth(logout))
  mux.HandleFunc("GET /api/me",auth(me))
+ mux.HandleFunc("DELETE /api/materials/{id}",auth(deleteMaterial))
+ mux.HandleFunc("DELETE /api/assistant/conversations/{id}",auth(deleteConversation))
  mux.HandleFunc("GET /api/materials",auth(list))
  mux.HandleFunc("POST /api/materials",auth(create))
  mux.HandleFunc("GET /api/materials/{id}",auth(detail))
@@ -66,6 +70,12 @@ func main() {
  mux.HandleFunc("POST /api/materials/{id}/reindex",auth(reindex))
  mux.HandleFunc("GET /api/search",auth(search))
  mux.HandleFunc("POST /api/ask",auth(ask))
+ mux.HandleFunc("GET /api/assistant/settings",auth(assistantGetSettings))
+ mux.HandleFunc("PUT /api/assistant/settings",auth(assistantPutSettings))
+ mux.HandleFunc("GET /api/assistant/conversations",auth(assistantListConversations))
+ mux.HandleFunc("POST /api/assistant/conversations",auth(assistantCreateConversation))
+ mux.HandleFunc("GET /api/assistant/conversations/{id}",auth(assistantGetConversation))
+ mux.HandleFunc("POST /api/assistant/conversations/{id}/messages",auth(assistantSendMessage))
  log.Fatal(http.ListenAndServe(":8081",security(mux)))
 }
 func seed(){
@@ -78,7 +88,7 @@ func seed(){
  if _,err=db.Exec("INSERT INTO users(username,password_hash,role,class_id) VALUES(?,?,?,?)",a.name,string(hash),a.role,classID);err!=nil {log.Fatal(err)}
  }
 }
-func security(next http.Handler) http.Handler {return http.HandlerFunc(func(w http.ResponseWriter,r *http.Request){w.Header().Set("X-Content-Type-Options","nosniff");w.Header().Set("Cache-Control","no-store"); if r.Method=="POST" && strings.HasPrefix(r.URL.Path,"/api/") {origin:=r.Header.Get("Origin");if origin!="" {host:=r.Host;if r.Header.Get("X-Forwarded-Host")!="" {host=r.Header.Get("X-Forwarded-Host")};if origin!="http://"+host && origin!="https://"+host {failure(w,http.StatusForbidden);return}};if r.Header.Get("Sec-Fetch-Site")=="cross-site" {failure(w,http.StatusForbidden);return}};next.ServeHTTP(w,r)})}
+func security(next http.Handler) http.Handler {return http.HandlerFunc(func(w http.ResponseWriter,r *http.Request){w.Header().Set("X-Content-Type-Options","nosniff");w.Header().Set("Cache-Control","no-store"); if (r.Method=="POST"||r.Method=="PUT"||r.Method=="DELETE") && strings.HasPrefix(r.URL.Path,"/api/") {origin:=r.Header.Get("Origin");if origin!="" {host:=r.Host;if r.Header.Get("X-Forwarded-Host")!="" {host=r.Header.Get("X-Forwarded-Host")};if origin!="http://"+host && origin!="https://"+host {failure(w,http.StatusForbidden);return}};if r.Header.Get("Sec-Fetch-Site")=="cross-site" {failure(w,http.StatusForbidden);return}};next.ServeHTTP(w,r)})}
 func failure(w http.ResponseWriter,status int){w.Header().Set("Content-Type","application/json");w.WriteHeader(status);io.WriteString(w,failBody)}
 func unavailable(w http.ResponseWriter){failure(w,http.StatusServiceUnavailable)}
 func respond(w http.ResponseWriter,v any){w.Header().Set("Content-Type","application/json; charset=utf-8");json.NewEncoder(w).Encode(v)}
@@ -93,13 +103,13 @@ func login(w http.ResponseWriter,r *http.Request){var input struct{Username stri
  valid:=bcrypt.CompareHashAndPassword([]byte(hash),[]byte(input.Password))==nil
  if !valid||limited||id==0 {attempts.Lock();v:=attempts.items[key];if time.Now().After(v.until) {v.count=0};v.count++;v.until=time.Now().Add(5*time.Minute);attempts.items[key]=v;attempts.Unlock();failure(w,401);return}
  attempts.Lock();delete(attempts.items,key);attempts.Unlock()
- token:=randomToken();digest:=tokenHash(token);_,err=db.Exec("INSERT INTO sessions(token_hash,user_id,expires_at) VALUES(?,?,?)",digest[:],id,time.Now().Add(12*time.Hour));if err!=nil {unavailable(w);return};setCookie(w,token,12*3600);respond(w,map[string]bool{"ok":true})
+ token:=randomToken();digest:=tokenHash(token);_,err=db.Exec("INSERT INTO sessions(token_hash,user_id,expires_at) VALUES(?,?,?)",digest[:],id,time.Now().Add(12*time.Hour));if err!=nil {unavailable(w);return};setCookie(w,"",-1);respond(w,map[string]any{"access_token":token,"token_type":"Bearer","expires_in":12*3600})
 }
 type handler func(http.ResponseWriter,*http.Request,user)
-func auth(next handler) http.HandlerFunc {return func(w http.ResponseWriter,r *http.Request){c,err:=r.Cookie("cc_session");if err!=nil||len(c.Value)!=64 {failure(w,401);return};digest:=tokenHash(c.Value);var u user;var expires time.Time
- err=db.QueryRow("SELECT u.id,u.username,u.role,u.class_id,s.expires_at FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.token_hash=?",digest[:]).Scan(&u.ID,&u.Username,&u.Role,&u.ClassID,&expires)
+func auth(next handler) http.HandlerFunc {return func(w http.ResponseWriter,r *http.Request){token,ok:=requestToken(r);if !ok {w.Header().Set("WWW-Authenticate","Bearer");failure(w,401);return};digest:=tokenHash(token);var u user;var expires time.Time
+ err:=db.QueryRow("SELECT u.id,u.username,u.role,u.class_id,s.expires_at FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.token_hash=?",digest[:]).Scan(&u.ID,&u.Username,&u.Role,&u.ClassID,&expires)
  if errors.Is(err,sql.ErrNoRows)||err==nil && time.Now().After(expires) {failure(w,401);return};if err!=nil {unavailable(w);return};if u.Role!="teacher"&&u.Role!="student" {failure(w,401);return};next(w,r,u)}}
-func logout(w http.ResponseWriter,r *http.Request,u user){c,_:=r.Cookie("cc_session");d:=tokenHash(c.Value);if _,err:=db.Exec("DELETE FROM sessions WHERE token_hash=?",d[:]);err!=nil {unavailable(w);return};setCookie(w,"",-1);respond(w,map[string]bool{"ok":true})}
+func logout(w http.ResponseWriter,r *http.Request,u user){token,_:=requestToken(r);d:=tokenHash(token);if _,err:=db.Exec("DELETE FROM sessions WHERE token_hash=?",d[:]);err!=nil {unavailable(w);return};setCookie(w,"",-1);respond(w,map[string]bool{"ok":true})}
 func me(w http.ResponseWriter,r *http.Request,u user){respond(w,u)}
 func list(w http.ResponseWriter,r *http.Request,u user){q:=strings.TrimSpace(r.URL.Query().Get("q"));if len(q)>200 {failure(w,400);return};rows,err:=db.Query("SELECT id,title,size_bytes,created_at FROM materials WHERE class_id=? AND title LIKE ? ORDER BY created_at DESC,id DESC LIMIT 100",u.ClassID,"%"+escapeLike(q)+"%");if err!=nil {unavailable(w);return};defer rows.Close();items:=[]material{};for rows.Next(){var m material;if rows.Scan(&m.ID,&m.Title,&m.Size,&m.Created)!=nil {unavailable(w);return};items=append(items,m)};if rows.Err()!=nil {unavailable(w);return};respond(w,items)}
 func escapeLike(s string) string {s=strings.ReplaceAll(s,`\`,`\\`);s=strings.ReplaceAll(s,`%`,`\%`);return strings.ReplaceAll(s,`_`,`\_`)}

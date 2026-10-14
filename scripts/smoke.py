@@ -11,7 +11,11 @@ def client():
     return urllib.request.build_opener(urllib.request.HTTPCookieProcessor(http.cookiejar.CookieJar()))
 
 def request(opener, path, method='GET', body=None, headers=None):
-    req = urllib.request.Request(BASE + path, data=body, method=method, headers=headers or {})
+    request_headers = dict(headers or {})
+    token = getattr(opener, 'access_token', None)
+    if token and path != '/api/login':
+        request_headers.setdefault('Authorization', 'Bearer ' + token)
+    req = urllib.request.Request(BASE + path, data=body, method=method, headers=request_headers)
     try:
         with opener.open(req) as response:
             return response.status, response.read()
@@ -19,8 +23,11 @@ def request(opener, path, method='GET', body=None, headers=None):
         return err.code, err.read()
 
 def login(opener, name, password):
-    status, _ = request(opener, '/api/login', 'POST', json.dumps({'username': name, 'password': password}).encode(), {'Content-Type': 'application/json'})
+    status, data = request(opener, '/api/login', 'POST', json.dumps({'username': name, 'password': password}).encode(), {'Content-Type': 'application/json'})
     assert status == 200, (name, status)
+    session = json.loads(data)
+    assert session['token_type'] == 'Bearer' and session['expires_in'] == 43200
+    opener.access_token = session['access_token']
 
 def multipart(filename, content):
     boundary = 'CampusClawBoundary'
@@ -39,6 +46,10 @@ if __name__ == '__main__':
         op = client(); login(op, name, password)
         assert request(op, '/api/me')[0] == 200
         users[name] = op
+    # A legacy cookie alone must not authenticate; malformed and unknown Bearer tokens fail.
+    assert request(client(), '/api/me', headers={'Cookie': 'cc_session=' + users['teacher_a'].access_token})[0] == 401
+    for value in ('Basic abc', 'Bearer invalid', 'Bearer ' + '0' * 64):
+        assert request(client(), '/api/me', headers={'Authorization': value})[0] == 401
     body, headers = multipart('lesson.md', b'# CampusClaw smoke test\nOnly class A.')
     status, data = request(users['teacher_a'], '/api/materials', 'POST', body, headers)
     assert status == 201, (status, data)

@@ -20,3 +20,42 @@ CREATE TABLE IF NOT EXISTS knowledge_chunks (
  FOREIGN KEY (material_id) REFERENCES materials(id) ON DELETE CASCADE,
  FOREIGN KEY (knowledge_entry_id) REFERENCES knowledge_entries(material_id) ON DELETE CASCADE
 );
+CREATE TABLE IF NOT EXISTS assistant_settings (
+ class_id BIGINT PRIMARY KEY,
+ system_prompt TEXT NOT NULL,
+ guidance_enabled BOOLEAN NOT NULL DEFAULT TRUE,
+ updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+ FOREIGN KEY (class_id) REFERENCES classes(id)
+);
+CREATE TABLE IF NOT EXISTS assistant_conversations (
+ id BIGINT PRIMARY KEY AUTO_INCREMENT,
+ user_id BIGINT NOT NULL,
+ class_id BIGINT NOT NULL,
+ title VARCHAR(100) NOT NULL DEFAULT '新会话',
+ busy BOOLEAN NOT NULL DEFAULT FALSE,
+ created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ INDEX idx_assistant_owner (user_id,class_id,updated_at),
+ FOREIGN KEY (user_id) REFERENCES users(id),
+ FOREIGN KEY (class_id) REFERENCES classes(id)
+);
+CREATE TABLE IF NOT EXISTS assistant_messages (
+ id BIGINT PRIMARY KEY AUTO_INCREMENT,
+ conversation_id BIGINT NOT NULL,
+ role ENUM('user','assistant') NOT NULL,
+ content MEDIUMTEXT NOT NULL,
+ citations JSON NOT NULL,
+ prompt_snapshot TEXT NOT NULL,
+ guidance_enabled BOOLEAN NOT NULL,
+ state ENUM('streaming','complete','interrupted','error') NOT NULL,
+ created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ INDEX idx_assistant_message (conversation_id,id),
+ FOREIGN KEY (conversation_id) REFERENCES assistant_conversations(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS material_cleanup_jobs (
+ material_id BIGINT PRIMARY KEY,
+ class_id BIGINT NOT NULL,
+ storage_name VARCHAR(100) NOT NULL,
+ created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);

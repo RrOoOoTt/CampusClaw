@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { apiFetch } from './auth'
 
 type Hit={chunk_id:number;material_id:number;title:string;chunk_index:number;start_char:number;end_char:number;excerpt:string;link:string;score:number}
 type SearchResult={hits:Hit[];message:string}
@@ -10,7 +11,7 @@ export default function Retrieval({open}:{open:(id:number)=>void}){
   if(!q.trim())return;setBusy(true);setNotice('');setAnswer(null)
   try{
    const url=kind==='search'?'/api/search?q='+encodeURIComponent(q.trim())+'&mode='+mode:'/api/ask'
-   const res=await fetch(url,kind==='ask'?{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({question:q.trim()})}:undefined)
+   const res=await apiFetch(url,kind==='ask'?{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({question:q.trim()})}:undefined)
    if(!res.ok)throw new Error(res.status===503?'检索依赖暂时不可用':res.status===401?'请重新登录':'请求失败')
    if(kind==='search'){const data=await res.json() as SearchResult;setHits(data.hits);setNotice(data.message)}
    else{const data=await res.json() as Answer;setAnswer(data);setHits(data.citations);if(!data.citations.length)setNotice(data.answer)}

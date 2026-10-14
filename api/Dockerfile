@@ -3,7 +3,7 @@ WORKDIR /src
 COPY go.mod ./
 RUN go mod download
 COPY . .
-RUN go mod tidy && CGO_ENABLED=0 go build -trimpath -o /campusclaw .
+RUN go mod tidy && go test ./... && CGO_ENABLED=0 go build -trimpath -o /campusclaw .
 RUN mkdir /uploads && chown 10001:10001 /uploads
 FROM scratch
 COPY --from=build --chown=10001:10001 /campusclaw /campusclaw

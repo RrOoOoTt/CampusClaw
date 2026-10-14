@@ -13,8 +13,10 @@ import (
  "sort"
  "strconv"
  "strings"
+ "sync"
  "time"
 )
+var materialMutation sync.Mutex
 const collection="campusclaw_chunks"
 const noEvidence="资料中未找到相关内容"
 var citationPattern=regexp.MustCompile(`\[(\d+)\]`)
@@ -74,6 +76,9 @@ func upsertPoint(id,materialID,classID int64,index int,v []float64)error{
 }
 func deletePoints(ids []int64)error {if len(ids)==0{return nil};_,err:=qRequest("POST","/collections/"+collection+"/points/delete?wait=true",map[string]any{"points":ids},nil);return err}
 func indexMaterial(materialID,classID int64,body string,opt chunkOptions)(int,error){
+ materialMutation.Lock();defer materialMutation.Unlock()
+ var exists int
+ if err:=db.QueryRow("SELECT 1 FROM materials WHERE id=? AND class_id=?",materialID,classID).Scan(&exists);err!=nil{return 0,err}
  pieces,err:=splitText(body,opt);if err!=nil{return 0,err};if len(pieces)==0{return 0,errors.New("empty chunks")}
  rows,err:=db.Query("SELECT id FROM knowledge_chunks WHERE material_id=? AND class_id=?",materialID,classID);if err!=nil{return 0,err};old:=[]int64{};for rows.Next(){var id int64;if err=rows.Scan(&id);err!=nil{rows.Close();return 0,err};old=append(old,id)};err=rows.Err();rows.Close();if err!=nil{return 0,err}
  // Keep the old index if Qdrant cannot remove its points; avoid a stale vector being reused by ID.
