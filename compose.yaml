@@ -32,6 +32,10 @@ services:
       CHAT_MODEL: ${CHAT_MODEL:-demo-chat}
       CHAT_GATEWAY_BASE_URL: ${CHAT_GATEWAY_BASE_URL:-}
       CHAT_GATEWAY_API_KEY: ${CHAT_GATEWAY_API_KEY:-}
+      MCP_AUTH_TOKEN: ${MCP_AUTH_TOKEN:-}
+      MCP_ALLOWED_HOSTS: ${MCP_ALLOWED_HOSTS:-mcp-demo}
+      MCP_MAX_ROUNDS: ${MCP_MAX_ROUNDS:-3}
+      MCP_MAX_CALLS: ${MCP_MAX_CALLS:-4}
       COOKIE_SECURE: ${COOKIE_SECURE:-false}
       SEED_TEACHER_A_PASSWORD: ${SEED_TEACHER_A_PASSWORD:?required}
       SEED_STUDENT_A_PASSWORD: ${SEED_STUDENT_A_PASSWORD:?required}
@@ -46,6 +50,11 @@ services:
         condition: service_started
     volumes:
       - uploads:/uploads
+    restart: unless-stopped
+  mcp-demo:
+    build: ./mcp-server
+    environment:
+      MCP_AUTH_TOKEN: ${MCP_AUTH_TOKEN:-}
     restart: unless-stopped
   qdrant:
     image: qdrant/qdrant:v1.12.6

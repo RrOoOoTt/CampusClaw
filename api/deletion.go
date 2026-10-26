@@ -11,6 +11,7 @@ import (
  "time"
 )
 
+// @api DELETE /api/materials/{id} | 删除本班资料与索引 | teacher | - | DeleteResult
 func deleteMaterial(w http.ResponseWriter,r *http.Request,u user){
  if u.Role!="teacher"{failure(w,403);return}
  id,err:=strconv.ParseInt(r.PathValue("id"),10,64);if err!=nil||id<1{failure(w,404);return}
@@ -51,6 +52,7 @@ func runMaterialCleanup(){
   time.Sleep(30*time.Second)
  }
 }
+// @api DELETE /api/assistant/conversations/{id} | 删除本人会话及消息 | auth | - | Deleted
 func deleteConversation(w http.ResponseWriter,r *http.Request,u user){
  id,err:=strconv.ParseInt(r.PathValue("id"),10,64);if err!=nil||id<1{failure(w,404);return}
  tx,err:=db.Begin();if err!=nil{unavailable(w);return};defer tx.Rollback()

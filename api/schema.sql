@@ -59,3 +59,49 @@ CREATE TABLE IF NOT EXISTS material_cleanup_jobs (
  storage_name VARCHAR(100) NOT NULL,
  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+CREATE TABLE IF NOT EXISTS tutor_agents (
+ id BIGINT PRIMARY KEY AUTO_INCREMENT, class_id BIGINT NOT NULL, name VARCHAR(64) NOT NULL,
+ system_prompt TEXT NOT NULL, enabled BOOLEAN NOT NULL DEFAULT TRUE,
+ UNIQUE KEY uq_agent_name(class_id,name), FOREIGN KEY(class_id) REFERENCES classes(id)
+);
+CREATE TABLE IF NOT EXISTS tutor_skills (
+ id BIGINT PRIMARY KEY AUTO_INCREMENT, class_id BIGINT NOT NULL, name VARCHAR(64) NOT NULL,
+ `conditions` TEXT NOT NULL, subject VARCHAR(32) NOT NULL DEFAULT '', tool VARCHAR(64) NOT NULL DEFAULT 'knowledge_search',
+ body TEXT NOT NULL, enabled BOOLEAN NOT NULL DEFAULT TRUE, source_text TEXT NOT NULL,
+ UNIQUE KEY uq_skill_name(class_id,name), FOREIGN KEY(class_id) REFERENCES classes(id)
+);
+CREATE TABLE IF NOT EXISTS tutor_agent_skills (
+ agent_id BIGINT NOT NULL, skill_id BIGINT NOT NULL, PRIMARY KEY(agent_id,skill_id),
+ FOREIGN KEY(agent_id) REFERENCES tutor_agents(id) ON DELETE CASCADE,
+ FOREIGN KEY(skill_id) REFERENCES tutor_skills(id) ON DELETE CASCADE
+);
+CREATE TABLE IF NOT EXISTS tutor_agent_materials (
+ agent_id BIGINT NOT NULL, material_id BIGINT NOT NULL, PRIMARY KEY(agent_id,material_id),
+ FOREIGN KEY(agent_id) REFERENCES tutor_agents(id) ON DELETE CASCADE,
+ FOREIGN KEY(material_id) REFERENCES materials(id) ON DELETE CASCADE
+);
+CREATE TABLE IF NOT EXISTS mcp_servers (
+ id BIGINT PRIMARY KEY AUTO_INCREMENT,class_id BIGINT NOT NULL,name VARCHAR(24) NOT NULL,
+ base_url VARCHAR(255) NOT NULL,token_env VARCHAR(64) NOT NULL,connected BOOLEAN NOT NULL DEFAULT FALSE,
+ last_error VARCHAR(255) NOT NULL DEFAULT '',created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ UNIQUE KEY uq_mcp_class_name(class_id,name),FOREIGN KEY(class_id) REFERENCES classes(id)
+);
+CREATE TABLE IF NOT EXISTS mcp_tools (
+ server_id BIGINT NOT NULL,name VARCHAR(32) NOT NULL,description TEXT NOT NULL,input_schema JSON NOT NULL,
+ PRIMARY KEY(server_id,name),FOREIGN KEY(server_id) REFERENCES mcp_servers(id) ON DELETE CASCADE
+);
+CREATE TABLE IF NOT EXISTS mcp_calls (
+ id BIGINT PRIMARY KEY AUTO_INCREMENT,class_id BIGINT NOT NULL,server_id BIGINT NOT NULL,user_id BIGINT NOT NULL,
+ message_id BIGINT NULL,tool_ref VARCHAR(100) NOT NULL,round_no INT NOT NULL,status ENUM('ok','denied','error') NOT NULL,
+ arguments_json JSON NOT NULL,result_text TEXT NOT NULL,detail VARCHAR(255) NOT NULL,
+ created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ INDEX idx_mcp_calls(class_id,id),FOREIGN KEY(class_id) REFERENCES classes(id),
+ FOREIGN KEY(server_id) REFERENCES mcp_servers(id) ON DELETE CASCADE,FOREIGN KEY(user_id) REFERENCES users(id)
+);
+CREATE TABLE IF NOT EXISTS llm_traces (
+ id BIGINT PRIMARY KEY AUTO_INCREMENT,message_id BIGINT NOT NULL,user_id BIGINT NOT NULL,class_id BIGINT NOT NULL,
+ round_no INT NOT NULL,phase VARCHAR(32) NOT NULL,request_json JSON NOT NULL,response_json JSON NOT NULL,
+ created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ FOREIGN KEY(message_id) REFERENCES assistant_messages(id) ON DELETE CASCADE,
+ INDEX idx_trace_owner(user_id,class_id,message_id)
+);

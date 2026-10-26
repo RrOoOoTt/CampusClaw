@@ -1,9 +1,9 @@
 FROM golang:1.23-alpine AS build
 WORKDIR /src
-COPY go.mod ./
+COPY go.mod go.sum ./
 RUN go mod download
 COPY . .
-RUN go mod tidy && go test ./... && CGO_ENABLED=0 go build -trimpath -o /campusclaw .
+RUN go mod tidy && go test ./... && CGO_ENABLED=0 go build -buildvcs=false -trimpath -o /campusclaw .
 RUN mkdir /uploads && chown 10001:10001 /uploads
 FROM scratch
 COPY --from=build --chown=10001:10001 /campusclaw /campusclaw

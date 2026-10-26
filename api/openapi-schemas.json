@@ -1,0 +1,799 @@
+{
+  "Error": {
+    "type": "object",
+    "properties": {
+      "error": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "error"
+    ]
+  },
+  "LoginInput": {
+    "type": "object",
+    "properties": {
+      "username": {
+        "type": "string",
+        "example": "student_a"
+      },
+      "password": {
+        "type": "string",
+        "format": "password",
+        "writeOnly": true
+      }
+    },
+    "required": [
+      "username",
+      "password"
+    ]
+  },
+  "LoginResult": {
+    "type": "object",
+    "properties": {
+      "access_token": {
+        "type": "string",
+        "minLength": 64,
+        "maxLength": 64
+      },
+      "token_type": {
+        "type": "string",
+        "example": "Bearer"
+      },
+      "expires_in": {
+        "type": "integer",
+        "format": "int64",
+        "example": 43200
+      }
+    },
+    "required": []
+  },
+  "User": {
+    "type": "object",
+    "properties": {
+      "username": {
+        "type": "string"
+      },
+      "role": {
+        "type": "string",
+        "enum": [
+          "teacher",
+          "student"
+        ]
+      },
+      "class_id": {
+        "type": "integer",
+        "format": "int64"
+      }
+    },
+    "required": []
+  },
+  "Deleted": {
+    "type": "object",
+    "properties": {
+      "deleted": {
+        "type": "boolean"
+      },
+      "updated": {
+        "type": "boolean"
+      },
+      "ok": {
+        "type": "boolean"
+      }
+    },
+    "required": []
+  },
+  "DeleteResult": {
+    "type": "object",
+    "properties": {
+      "deleted": {
+        "type": "boolean"
+      },
+      "cleanup_pending": {
+        "type": "boolean"
+      }
+    },
+    "required": []
+  },
+  "Material": {
+    "type": "object",
+    "properties": {
+      "id": {
+        "type": "integer",
+        "format": "int64"
+      },
+      "title": {
+        "type": "string"
+      },
+      "size": {
+        "type": "integer",
+        "format": "int64"
+      },
+      "created_at": {
+        "type": "string",
+        "format": "date-time"
+      },
+      "body": {
+        "type": "string"
+      },
+      "subject": {
+        "type": "string",
+        "enum": [
+          "数学",
+          "语文",
+          "英语",
+          "通用"
+        ]
+      }
+    },
+    "required": []
+  },
+  "MaterialUpload": {
+    "type": "object",
+    "properties": {
+      "file": {
+        "type": "string",
+        "format": "binary"
+      },
+      "subject": {
+        "type": "string",
+        "enum": [
+          "数学",
+          "语文",
+          "英语",
+          "通用"
+        ],
+        "default": "通用"
+      },
+      "strategy": {
+        "type": "string",
+        "enum": [
+          "auto",
+          "hierarchy",
+          "custom"
+        ],
+        "default": "auto"
+      },
+      "max_chars": {
+        "type": "integer",
+        "format": "int64",
+        "minimum": 100,
+        "maximum": 2000
+      },
+      "overlap_ratio": {
+        "type": "number",
+        "minimum": 0,
+        "maximum": 0.5
+      },
+      "separator": {
+        "type": "string",
+        "enum": [
+          "newline",
+          "blankline",
+          "period"
+        ]
+      }
+    },
+    "required": [
+      "file"
+    ]
+  },
+  "ChunkOptions": {
+    "type": "object",
+    "properties": {
+      "strategy": {
+        "type": "string",
+        "enum": [
+          "auto",
+          "hierarchy",
+          "custom"
+        ],
+        "default": "auto"
+      },
+      "max_chars": {
+        "type": "integer",
+        "format": "int64",
+        "minimum": 100,
+        "maximum": 2000
+      },
+      "overlap_ratio": {
+        "type": "number",
+        "minimum": 0,
+        "maximum": 0.5
+      },
+      "separator": {
+        "type": "string",
+        "enum": [
+          "newline",
+          "blankline",
+          "period"
+        ]
+      }
+    },
+    "required": []
+  },
+  "UploadResult": {
+    "type": "object",
+    "properties": {
+      "id": {
+        "type": "integer",
+        "format": "int64"
+      },
+      "index_status": {
+        "type": "string",
+        "enum": [
+          "ready",
+          "failed"
+        ]
+      },
+      "chunks": {
+        "type": "integer",
+        "format": "int64"
+      }
+    },
+    "required": []
+  },
+  "AgentInput": {
+    "type": "object",
+    "properties": {
+      "name": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 64
+      },
+      "prompt": {
+        "type": "string",
+        "maxLength": 2000,
+        "default": ""
+      },
+      "enabled": {
+        "type": "boolean"
+      },
+      "skill_ids": {
+        "type": "array",
+        "items": {
+          "type": "integer",
+          "format": "int64"
+        }
+      },
+      "material_ids": {
+        "type": "array",
+        "items": {
+          "type": "integer",
+          "format": "int64"
+        }
+      }
+    },
+    "required": [
+      "name",
+      "enabled"
+    ]
+  },
+  "Agent": {
+    "type": "object",
+    "properties": {
+      "id": {
+        "type": "integer",
+        "format": "int64"
+      },
+      "name": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 64
+      },
+      "prompt": {
+        "type": "string",
+        "maxLength": 2000,
+        "default": ""
+      },
+      "enabled": {
+        "type": "boolean"
+      },
+      "skill_ids": {
+        "type": "array",
+        "items": {
+          "type": "integer",
+          "format": "int64"
+        }
+      },
+      "material_ids": {
+        "type": "array",
+        "items": {
+          "type": "integer",
+          "format": "int64"
+        }
+      }
+    },
+    "required": []
+  },
+  "SkillInput": {
+    "type": "object",
+    "properties": {
+      "source": {
+        "type": "string",
+        "maxLength": 8000,
+        "example": "名称：数学解题引导\n适用条件：面积，三角形\n启用：是\n工具：knowledge_search\n学科：数学\n\n只给下一步提示，不写最终得数。"
+      }
+    },
+    "required": [
+      "source"
+    ]
+  },
+  "Skill": {
+    "type": "object",
+    "properties": {
+      "id": {
+        "type": "integer",
+        "format": "int64"
+      },
+      "name": {
+        "type": "string"
+      },
+      "conditions": {
+        "type": "string"
+      },
+      "subject": {
+        "type": "string"
+      },
+      "tool": {
+        "type": "string"
+      },
+      "body": {
+        "type": "string"
+      },
+      "enabled": {
+        "type": "boolean"
+      },
+      "source": {
+        "type": "string"
+      }
+    },
+    "required": []
+  },
+  "SubjectInput": {
+    "type": "object",
+    "properties": {
+      "subject": {
+        "type": "string",
+        "enum": [
+          "数学",
+          "语文",
+          "英语",
+          "通用"
+        ]
+      }
+    },
+    "required": [
+      "subject"
+    ]
+  },
+  "ConversationInput": {
+    "type": "object",
+    "properties": {
+      "agent_id": {
+        "type": "integer",
+        "format": "int64",
+        "minimum": 1
+      }
+    },
+    "required": [
+      "agent_id"
+    ]
+  },
+  "IDResult": {
+    "type": "object",
+    "properties": {
+      "id": {
+        "type": "integer",
+        "format": "int64"
+      }
+    },
+    "required": []
+  },
+  "QuestionInput": {
+    "type": "object",
+    "properties": {
+      "question": {
+        "type": "string",
+        "minLength": 2,
+        "maxLength": 500,
+        "example": "如何分析三角形面积？"
+      }
+    },
+    "required": [
+      "question"
+    ]
+  },
+  "Conversation": {
+    "type": "object",
+    "properties": {
+      "id": {
+        "type": "integer",
+        "format": "int64"
+      },
+      "title": {
+        "type": "string"
+      },
+      "updated_at": {
+        "type": "string",
+        "format": "date-time"
+      },
+      "busy": {
+        "type": "boolean"
+      },
+      "agent_id": {
+        "type": "integer",
+        "format": "int64"
+      }
+    },
+    "required": []
+  },
+  "Hit": {
+    "type": "object",
+    "properties": {
+      "chunk_id": {
+        "type": "integer",
+        "format": "int64"
+      },
+      "material_id": {
+        "type": "integer",
+        "format": "int64"
+      },
+      "title": {
+        "type": "string"
+      },
+      "chunk_index": {
+        "type": "integer",
+        "format": "int64"
+      },
+      "start_char": {
+        "type": "integer",
+        "format": "int64"
+      },
+      "end_char": {
+        "type": "integer",
+        "format": "int64"
+      },
+      "excerpt": {
+        "type": "string"
+      },
+      "link": {
+        "type": "string"
+      },
+      "score": {
+        "type": "number"
+      }
+    },
+    "required": []
+  },
+  "Message": {
+    "type": "object",
+    "properties": {
+      "id": {
+        "type": "integer",
+        "format": "int64"
+      },
+      "role": {
+        "type": "string",
+        "enum": [
+          "user",
+          "assistant"
+        ]
+      },
+      "content": {
+        "type": "string"
+      },
+      "citations": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/Hit"
+        }
+      },
+      "guidance_enabled": {
+        "type": "boolean"
+      },
+      "prompt_snapshot": {
+        "type": "string"
+      },
+      "state": {
+        "type": "string",
+        "enum": [
+          "streaming",
+          "complete",
+          "interrupted",
+          "error"
+        ]
+      },
+      "created_at": {
+        "type": "string",
+        "format": "date-time"
+      },
+      "tool_calls": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "tool_ref": {
+              "type": "string"
+            },
+            "status": {
+              "type": "string"
+            },
+            "round": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "detail": {
+              "type": "string"
+            },
+            "result": {
+              "type": "string"
+            }
+          },
+          "required": []
+        }
+      }
+    },
+    "required": []
+  },
+  "ConversationDetail": {
+    "type": "object",
+    "properties": {
+      "conversation": {
+        "$ref": "#/components/schemas/Conversation"
+      },
+      "messages": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/Message"
+        }
+      }
+    },
+    "required": []
+  },
+  "SearchResult": {
+    "type": "object",
+    "properties": {
+      "hits": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/Hit"
+        }
+      },
+      "message": {
+        "type": "string"
+      }
+    },
+    "required": []
+  },
+  "AskResult": {
+    "type": "object",
+    "properties": {
+      "answer": {
+        "type": "string"
+      },
+      "citations": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/Hit"
+        }
+      }
+    },
+    "required": []
+  },
+  "Settings": {
+    "type": "object",
+    "properties": {
+      "prompt": {
+        "type": "string",
+        "maxLength": 2000
+      },
+      "guidance_enabled": {
+        "type": "boolean"
+      }
+    },
+    "required": []
+  },
+  "MCPServerInput": {
+    "type": "object",
+    "properties": {
+      "name": {
+        "type": "string",
+        "pattern": "^[a-z][a-z0-9-]{0,23}$"
+      },
+      "base_url": {
+        "type": "string",
+        "example": "http://mcp-demo:8090"
+      },
+      "token_env": {
+        "type": "string",
+        "example": "MCP_AUTH_TOKEN",
+        "description": "环境变量名，不接受真实令牌；API不回传此字段"
+      }
+    },
+    "required": [
+      "name",
+      "base_url"
+    ]
+  },
+  "MCPServer": {
+    "type": "object",
+    "properties": {
+      "id": {
+        "type": "integer",
+        "format": "int64"
+      },
+      "name": {
+        "type": "string"
+      },
+      "base_url": {
+        "type": "string"
+      },
+      "connected": {
+        "type": "boolean"
+      },
+      "has_token": {
+        "type": "boolean"
+      },
+      "last_error": {
+        "type": "string"
+      }
+    },
+    "required": []
+  },
+  "MCPTool": {
+    "type": "object",
+    "properties": {
+      "name": {
+        "type": "string"
+      },
+      "description": {
+        "type": "string"
+      },
+      "inputSchema": {
+        "type": "object"
+      }
+    },
+    "required": []
+  },
+  "MCPAudit": {
+    "type": "object",
+    "properties": {
+      "id": {
+        "type": "integer",
+        "format": "int64"
+      },
+      "tool_ref": {
+        "type": "string"
+      },
+      "server_name": {
+        "type": "string"
+      },
+      "status": {
+        "type": "string",
+        "enum": [
+          "ok",
+          "denied",
+          "error"
+        ]
+      },
+      "username": {
+        "type": "string"
+      },
+      "round": {
+        "type": "integer",
+        "format": "int64"
+      },
+      "arguments": {
+        "type": "object"
+      },
+      "result": {
+        "type": "string"
+      },
+      "detail": {
+        "type": "string"
+      },
+      "created_at": {
+        "type": "string"
+      },
+      "message_id": {
+        "type": "integer",
+        "format": "int64"
+      }
+    },
+    "required": []
+  },
+  "LLMTrace": {
+    "type": "object",
+    "properties": {
+      "message_id": {
+        "type": "integer",
+        "format": "int64"
+      },
+      "round": {
+        "type": "integer",
+        "format": "int64"
+      },
+      "phase": {
+        "type": "string"
+      },
+      "request": {
+        "type": "object"
+      },
+      "response": {
+        "type": "object"
+      },
+      "created_at": {
+        "type": "string"
+      }
+    },
+    "required": []
+  },
+  "DemoSetup": {
+    "type": "object",
+    "properties": {
+      "server": {
+        "$ref": "#/components/schemas/MCPServer"
+      },
+      "agent_ids": {
+        "type": "array",
+        "items": {
+          "type": "integer",
+          "format": "int64"
+        }
+      },
+      "message": {
+        "type": "string"
+      }
+    },
+    "required": []
+  },
+  "MCPProbeInput": {
+    "type": "object",
+    "properties": {
+      "name": {
+        "type": "string",
+        "example": "unit_convert"
+      },
+      "arguments": {
+        "type": "object",
+        "example": {
+          "from": "m",
+          "to": "cm"
+        }
+      }
+    },
+    "required": [
+      "name",
+      "arguments"
+    ]
+  },
+  "ToolUse": {
+    "type": "object",
+    "properties": {
+      "tool_ref": {
+        "type": "string"
+      },
+      "status": {
+        "type": "string",
+        "enum": [
+          "ok",
+          "denied",
+          "error"
+        ]
+      },
+      "round": {
+        "type": "integer"
+      },
+      "detail": {
+        "type": "string"
+      },
+      "arguments": {
+        "type": "object"
+      },
+      "result": {
+        "type": "string"
+      }
+    }
+  }
+}

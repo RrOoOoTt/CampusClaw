@@ -1,0 +1,114 @@
+{
+  "evidence_type": "Actual independent mcp-server executable listening on local HTTP; no mock MCP implementation; not a Compose/MySQL test",
+  "checks": {
+    "authenticated_checks": [
+      {
+        "method": "initialize",
+        "result": {
+          "capabilities": {
+            "tools": {}
+          },
+          "protocolVersion": "2025-03-26",
+          "serverInfo": {
+            "name": "campus-tools",
+            "version": "1.0.0"
+          }
+        },
+        "status": 200
+      },
+      {
+        "method": "tools/list",
+        "result": {
+          "tools": [
+            {
+              "description": "提供数学公式的选择提示与检查问题；不计算题目最终得数。",
+              "inputSchema": {
+                "additionalProperties": false,
+                "properties": {
+                  "topic": {
+                    "enum": [
+                      "triangle_area",
+                      "rectangle_area",
+                      "linear_equation"
+                    ],
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "topic"
+                ],
+                "type": "object"
+              },
+              "name": "formula_hint"
+            },
+            {
+              "description": "提供单位换算关系及方法提示，不对题目数值直接计算答案。",
+              "inputSchema": {
+                "additionalProperties": false,
+                "properties": {
+                  "from": {
+                    "enum": [
+                      "m",
+                      "cm",
+                      "mm",
+                      "km",
+                      "kg",
+                      "g"
+                    ],
+                    "type": "string"
+                  },
+                  "to": {
+                    "enum": [
+                      "m",
+                      "cm",
+                      "mm",
+                      "km",
+                      "kg",
+                      "g"
+                    ],
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "from",
+                  "to"
+                ],
+                "type": "object"
+              },
+              "name": "unit_convert"
+            }
+          ]
+        },
+        "status": 200
+      },
+      {
+        "method": "tools/call",
+        "result": {
+          "content": [
+            {
+              "text": "公式提示：先标出一条底边与对应的垂直高。三角形可补成平行四边形，检查面积关系；再自行选择底×高÷2，不代入题目数值。检查问题：你选的高是否垂直于这条底边？",
+              "type": "text"
+            }
+          ],
+          "isError": false
+        },
+        "status": 200
+      },
+      {
+        "method": "tools/call",
+        "result": {
+          "content": [
+            {
+              "text": "换算提示：1 m = 100 cm。先统一单位，再自行将题目中的数值乘以这个换算系数；本工具不返回题目最终得数。",
+              "type": "text"
+            }
+          ],
+          "isError": false
+        },
+        "status": 200
+      }
+    ],
+    "health": "ok",
+    "unauthorized": "401"
+  }
+}

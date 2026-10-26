@@ -9,3 +9,7 @@
 
 .danger{color:var(--red)}
 .conversation-row{display:flex;gap:6px;align-items:center}.conversation-row>button:first-child{flex:1;min-width:0;overflow-wrap:anywhere}.conversation-row>button:last-child{flex:none;width:auto;padding:8px}
+
+.admin-list{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0}.assistant-settings fieldset{max-height:200px;overflow:auto;margin:12px 0}.assistant-settings fieldset label{display:flex;align-items:center;gap:8px}.assistant-settings input[type=checkbox]{width:auto}.assistant-settings textarea{width:100%}
+
+.tool-uses{padding:10px;border:1px solid var(--border);margin-bottom:12px;border-radius:8px}.tool-uses summary{font-size:13px;font-weight:600}.trace-view{padding:0 16px}.trace-view pre,.assistant-settings pre{white-space:pre-wrap;overflow-wrap:anywhere;max-height:350px;overflow:auto;background:var(--bg);padding:12px}.audit-list{max-height:360px;overflow:auto}.audit-list details{border-bottom:1px solid var(--border);padding:8px}

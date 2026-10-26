@@ -29,7 +29,8 @@ if __name__=='__main__':
     status,hits=data(a,'/api/search?q='+str(mid)+'&mode=hybrid')
     assert status==200 and all(h['material_id']!=mid for h in hits['hits'])
     assert request(a,path,'DELETE')[0]==404
-    status,result=data(s,'/api/assistant/conversations','POST');assert status==201
+    agents=data(s,'/api/agents')[1];assert agents, 'need enabled agent'
+    status,result=data(s,'/api/assistant/conversations','POST',{'agent_id':agents[0]['id']});assert status==201
     cid=result['id'];path='/api/assistant/conversations/'+str(cid)
     assert request(client(),path,'DELETE')[0]==401
     assert request(a,path,'DELETE')[0]==404
